@@ -39,6 +39,87 @@
     try { localStorage.removeItem('bill_session'); } catch (e) {}
   }
 
+  const KICK_MULTI = '您的兑换码已在其他设备登录，本设备已被踢下线';
+  const KICK_EXPIRED = '兑换码已到期，请重新购买';
+  let kickWs = null;
+  let kickHb = 0;
+  let kickRetry = 0;
+
+  function kickReason(res) {
+    if (res && res.expired) return KICK_EXPIRED;
+    const s = getSession();
+    if (s && s.expires_ts && s.expires_ts > Date.now()) return KICK_MULTI;
+    return '验证已失效，请重新输入兑换码';
+  }
+
+  function stopKickWatch() {
+    kickRetry = 0;
+    if (kickHb) { clearInterval(kickHb); kickHb = 0; }
+    if (kickWs) { try { kickWs.onclose = null; kickWs.close(); } catch (e) {} kickWs = null; }
+  }
+
+  // 被顶号监听：常驻 ws 订阅本码，别的设备兑换同一码时立刻收到推送并下线
+  function startKickWatch(code) {
+    if (!code || !window.WebSocket) return;
+    stopKickWatch();
+    const topic = 'realtime:redeem:' + code;
+    let ref = 0;
+    const ws = new WebSocket(SB_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + SB_KEY + '&vsn=1.0.0');
+    kickWs = ws;
+    const send = (event, payload, tp) => {
+      if (ws.readyState === 1) ws.send(JSON.stringify({ topic: tp || topic, event: event, ref: String(++ref), payload: payload || {} }));
+    };
+    ws.onopen = () => {
+      kickRetry = 0;
+      send('phx_join', { config: { broadcast: { self: false, ack: false } } });
+      kickHb = setInterval(() => {
+        if (ws.readyState !== 1) return;
+        ws.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', ref: String(++ref), payload: {} }));
+      }, 30000);
+    };
+    ws.onmessage = e => {
+      let m;
+      try { m = JSON.parse(e.data); } catch (err) { return; }
+      if (m.event === 'phx_reply' && m.payload && m.payload.status === 'error') { stopKickWatch(); return; }
+      if (m.topic !== topic || m.event !== 'broadcast' || !m.payload) return;
+      const p = m.payload.payload || {};
+      if (m.payload.event === 'kick' && p.device !== deviceId()) {
+        stopKickWatch();
+        kickLogin(KICK_MULTI);
+      }
+    };
+    ws.onclose = () => {
+      if (kickHb) { clearInterval(kickHb); kickHb = 0; }
+      if (kickWs === ws && kickRetry < 60) {
+        kickRetry++;
+        setTimeout(() => { if (kickRetry > 0 && kickWs === ws) startKickWatch(code); }, 4000);
+      }
+    };
+    ws.onerror = () => {};
+  }
+
+  // 本机成功兑换后，通知已在线的旧设备下线
+  function notifyKick(code) {
+    if (!code || !window.WebSocket) return;
+    const topic = 'realtime:redeem:' + code;
+    const ws = new WebSocket(SB_URL.replace('https://', 'wss://') + '/realtime/v1/websocket?apikey=' + SB_KEY + '&vsn=1.0.0');
+    let ref = 0;
+    const send = (event, payload, tp) => {
+      if (ws.readyState === 1) ws.send(JSON.stringify({ topic: tp || topic, event: event, ref: String(++ref), payload: payload || {} }));
+    };
+    ws.onopen = () => send('phx_join', { config: { broadcast: { self: false, ack: false } } });
+    ws.onmessage = e => {
+      let m;
+      try { m = JSON.parse(e.data); } catch (err) { return; }
+      if (m.topic === topic && m.event === 'phx_reply' && m.payload && m.payload.status === 'ok') {
+        send('broadcast', { type: 'broadcast', event: 'kick', payload: { device: deviceId() } });
+        setTimeout(() => { try { ws.close(); } catch (err) {} }, 600);
+      }
+    };
+    ws.onerror = () => {};
+    setTimeout(() => { try { ws.close(); } catch (err) {} }, 6000);
+  }
+
   function configs() {
     return state.tab === 'alipay' ? ZFBregionConfigs : regionConfigs;
   }
@@ -634,7 +715,7 @@
     let vr;
     try { vr = await sbRpc('img_redeem_session', { p_device: deviceId() }); }
     catch (e) { kickLogin('网络异常，请联网后重新验证'); return; }
-    if (!(vr && vr.valid)) { kickLogin('验证已失效，请重新输入兑换码'); return; }
+    if (!(vr && vr.valid)) { kickLogin(kickReason(vr)); return; }
     setSession(vr); renderCdk(vr);
 
     if (!$('tradeNumber').value.trim()) $('tradeNumber').value = genTradeNumber();
@@ -930,6 +1011,7 @@
   }
 
   function kickLogin(m) {
+    stopKickWatch();
     clearSession();
     renderCdk(null);
     const s = $('loginScreen');
@@ -952,8 +1034,8 @@
     if (sess) {
       sbRpc('img_redeem_session', { p_device: deviceId() })
         .then(res => {
-          if (res && res.valid) { setSession(res); renderCdk(res); enter(); }
-          else kickLogin('验证已失效，请重新输入兑换码');
+          if (res && res.valid) { setSession(res); renderCdk(res); startKickWatch(res.code || sess.code); enter(); }
+          else kickLogin(kickReason(res));
         })
         .catch(() => kickLogin('网络异常，请联网后重新验证'));
       return;
@@ -976,6 +1058,8 @@
             msg.hidden = true;
             setSession(res);
             renderCdk(res);
+            startKickWatch(res.code);
+            notifyKick(res.code);
             enter();
           } else {
             msg.textContent = (res && res.msg) || '验证失败，请重试';
@@ -1020,7 +1104,7 @@
       sbRpc('img_redeem_session', { p_device: deviceId() })
         .then(res => {
           if (res && res.valid) { setSession(res); renderCdk(res); }
-          else kickLogin('验证已失效，请重新输入兑换码');
+          else kickLogin(kickReason(res));
         })
         .catch(() => kickLogin('网络异常，请联网后重新验证'));
     };
