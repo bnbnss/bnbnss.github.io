@@ -837,6 +837,25 @@
     }
   }
 
+  function isWeChat() {
+    return /MicroMessenger/i.test(navigator.userAgent);
+  }
+
+  function doDownload(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  }
+
+  function openShareGuide() {
+    const src = $('previewImg') && $('previewImg').src;
+    if (!src || src.indexOf('data:') !== 0) { alert('请先生成预览'); return; }
+    $('shareGuideImg').src = src;
+    $('shareGuide').hidden = false;
+  }
+
   function download() {
     const canvas = state.lastCanvas;
     if (!canvas) { alert('请先生成预览'); return; }
@@ -844,11 +863,16 @@
     try {
       canvas.toBlob(blob => {
         if (!blob) { alert('导出失败，请右键图片另存'); return; }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+        if (isWeChat()) { openShareGuide(); return; }
+        let file = null;
+        try { file = new File([blob], name, { type: 'image/png' }); } catch (e) {}
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file] }).catch(err => {
+            if (!err || err.name !== 'AbortError') doDownload(blob, name);
+          });
+          return;
+        }
+        doDownload(blob, name);
       }, 'image/png');
     } catch (e) {
       alert('导出失败，请右键图片另存');
@@ -1013,6 +1037,8 @@
     $('pickAvatarBtn').onclick = () => { renderAvatarGrid(); $('avatarModal').hidden = false; };
     $('closeModal').onclick = () => { $('avatarModal').hidden = true; };
     $('avatarModal').onclick = e => { if (e.target === $('avatarModal')) $('avatarModal').hidden = true; };
+    $('shareGuideClose').onclick = () => { $('shareGuide').hidden = true; };
+    $('shareGuide').onclick = e => { if (e.target === $('shareGuide')) $('shareGuide').hidden = true; };
     $('uploadAvatarBtn').onclick = () => $('fileInput').click();
     $('fileInput').onchange = e => {
       const f = e.target.files[0];
@@ -1087,6 +1113,10 @@
     }
   }
 
+  function lastCode() {
+    try { return localStorage.getItem('bill_last_code') || ''; } catch (e) { return ''; }
+  }
+
   function kickLogin(m) {
     stopKickWatch();
     clearSession();
@@ -1096,7 +1126,7 @@
     const msg = $('loginMsg');
     if (msg) { msg.textContent = m || ''; msg.hidden = !m; }
     const k = $('cardKey');
-    if (k) k.value = '';
+    if (k) k.value = lastCode();
     setShellStage(false);
     window.scrollTo(0, 0);
   }
@@ -1105,6 +1135,8 @@
     const screen = $('loginScreen');
     if (!screen) return;
     setShellStage(false);
+    const k0 = $('cardKey');
+    if (k0 && !k0.value) k0.value = lastCode();
     const msg = $('loginMsg');
     const btn = $('loginBtn');
     const enter = () => { screen.hidden = true; setShellStage(true); };
@@ -1127,6 +1159,7 @@
         msg.hidden = false;
         return;
       }
+      try { localStorage.setItem('bill_last_code', raw); } catch (e) {}
       btn.disabled = true;
       btn.textContent = '验证中…';
       sbRpc('img_redeem_redeem', { p_code: raw, p_device: deviceId() })
