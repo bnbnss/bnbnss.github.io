@@ -19,6 +19,7 @@ function loadImage(src) {
 }
 
 function preloadAvatars() {
+  if (typeof AVATAR_DATA === 'undefined') return;
   Object.keys(AVATAR_DATA).forEach(k => loadImage(AVATAR_DATA[k]));
 }
 

@@ -426,6 +426,7 @@
     if (!key) return '';
     if (key.indexOf('data:') === 0) return key;
     if (customAvatars[key]) return customAvatars[key].src;
+    if (typeof AVATAR_DATA === 'undefined') return '';
     return AVATAR_DATA[key] || '';
   }
 
@@ -755,7 +756,12 @@
       out.hidden = false;
     } catch (e) {
       cleanupTpl();
-      alert('生成失败：' + e.message);
+      const msg = String((e && e.message) || e);
+      if (/insecure|SecurityError|tainted/i.test(msg)) {
+        alert('当前浏览器安全限制，无法导出图片。请更换浏览器（如 Chrome/Safari）或更新系统后再试');
+      } else {
+        alert('生成失败：' + msg);
+      }
       $('previewPanel').hidden = true;
       $('formPanel').hidden = false;
     }
@@ -809,7 +815,8 @@
     const grid = $('avatarGrid');
     grid.innerHTML = '';
     const names = avatarNameMap();
-    Object.keys(customAvatars).concat(Object.keys(AVATAR_DATA))
+    Object.keys(customAvatars)
+      .concat(typeof AVATAR_DATA === 'undefined' ? [] : Object.keys(AVATAR_DATA))
       .filter(avatarVisible)
       .forEach(k => {
         const item = document.createElement('div');

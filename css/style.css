@@ -276,6 +276,13 @@ html, body {
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.65);
 }
 
+.save-hint {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--sub);
+}
+
 .modal {
   position: fixed;
   inset: 0;
@@ -703,86 +710,117 @@ input, textarea, [contenteditable] {
 img { -webkit-user-drag: none; user-drag: none; }
 
 /* ============================================================
-   PC 窄矮窗（600x430）桌面端重排
-   触发：视口高度 <=560；手机竖屏(>=667)与大屏浏览器不受影响
+   桌面端左右结构（exe 900x640 / 桌面浏览器）
+   左：品牌+竖排导航；右：内容区
+   触发：宽>=700 且 高>=560；手机横竖屏不受影响
    ============================================================ */
-@media (max-height: 560px) {
+@media (min-width: 700px) and (min-height: 560px) {
 
-  /* ---- 登录页紧凑化：整卡压进 430 高 ---- */
-  .login-card { width: 330px; max-width: 92%; padding: 16px 22px 14px; border-radius: 20px; }
-  .login-icon { width: 40px; height: 40px; font-size: 20px; line-height: 40px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 12px rgba(70, 80, 240, 0.4); }
-  .login-title { font-size: 21px; margin-bottom: 6px; }
-  .login-sub { font-size: 13px; line-height: 1.5; margin-bottom: 12px; }
-  #cardKey { height: 38px; font-size: 15px; padding: 0 16px; margin-bottom: 10px; border-radius: 19px; }
-  .login-msg { margin: -4px 0 8px; font-size: 12px; }
-  .login-main-btn { height: 40px; font-size: 17px; border-radius: 20px; }
-  .login-row { margin-top: 8px; gap: 8px; }
-  .login-sub-btn { height: 34px; font-size: 14px; border-radius: 17px; }
-  .login-tips { margin-top: 10px; font-size: 11.5px; line-height: 1.55; }
+  .app {
+    max-width: 960px;
+    width: 100%;
+    height: 100vh;
+    min-height: 0;
+    margin: 0 auto;
+    display: flex;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
 
-  /* ---- 主页顶部条压缩 ---- */
-  .topbar { padding: 8px 8px 0; }
-  .brand-row { margin-bottom: 6px; padding: 5px 10px; border-radius: 8px; }
-  .brand { font-size: 14.5px; }
-  .brand::before { height: 13px; margin-right: 6px; }
-  .brand-meta .cdk-code { font-size: 13px; max-width: 200px; }
-  .brand-meta .cdk-time { font-size: 11.5px; }
-  .tabs { padding: 3px; gap: 3px; border-radius: 10px; }
-  .tab { padding: 6px 0; font-size: 12.5px; border-radius: 8px; }
+  /* ---- 左侧栏 ---- */
+  .topbar {
+    position: static;
+    flex: none;
+    width: 220px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 12px;
+    border-bottom: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    background: #12161a;
+    z-index: 10;
+  }
+  .brand-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 0;
+    padding: 10px;
+  }
+  .brand-meta { align-items: flex-start; }
+  .brand-meta .cdk-code { max-width: 100%; font-size: 14px; }
+  .tabs {
+    flex-direction: column;
+    gap: 6px;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+  }
+  .tab {
+    flex: none;
+    width: 100%;
+    text-align: left;
+    padding: 11px 14px;
+    font-size: 14px;
+    border-radius: 10px;
+  }
+  .tab.active {
+    background: rgba(7, 193, 96, 0.12);
+    color: var(--brand);
+    box-shadow: inset 0 0 0 1px rgba(7, 193, 96, 0.35);
+  }
 
-  /* ---- 桌面重排：表单两列网格（600 宽横向利用） ---- */
-  .app { max-width: 600px; }
+  /* ---- 右侧内容区 ---- */
+  .panel {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 16px 18px 20px;
+  }
   .panel.form-panel {
     display: grid;
     grid-template-columns: 1fr 1fr;
     align-content: start;
-    gap: 8px;
-    padding: 8px 8px 52px;
+    gap: 10px;
   }
   .panel.form-panel > .field { margin-bottom: 0; }
-  .avatar-field, #merchantField, #plateField, .row2 { grid-column: 1 / -1; }
-  .field { padding: 7px 10px 9px; border-radius: 11px; }
-  .field > label { margin-bottom: 4px; font-size: 11.5px; }
-  .field input, .field select { height: 34px; font-size: 13.5px; border-radius: 8px; padding: 0 10px; }
-  .row2 { gap: 8px; }
-  .check-inline { height: 34px; }
-  .avatar-box img { width: 40px; height: 40px; }
-  .avatar-box { gap: 10px; }
-  .btn { min-height: 34px; font-size: 13.5px; padding: 0 12px; border-radius: 8px; }
-  .btn.block { min-height: 38px; font-size: 15px; border-radius: 10px; margin-top: 0; }
-  .sel-arrow { width: 30px; }
+  .row2, #plateField, #generateBtn { grid-column: 1 / -1; }
 
-  /* ---- 生成按钮吸底：矮窗里随时可点 ---- */
+  /* ---- 折叠字段在桌面端全部展开平铺 ---- */
+  .panel.form-panel .field.foldable > input { display: block; }
+  .panel.form-panel .field.foldable > .input-btn { display: flex; }
+  .panel.form-panel .field.foldable > label { margin-bottom: 5px; cursor: default; }
+  .panel.form-panel .field.foldable .fold-hint,
+  .panel.form-panel .field.foldable .fold-arrow { display: none; }
+
+  /* ---- 桌面尺寸 ---- */
+  .field { padding: 9px 12px 11px; }
+  .field > label { margin-bottom: 5px; }
+  .field input, .field select { height: 40px; font-size: 14.5px; }
+  .check-inline { height: 40px; }
+  .btn { min-height: 40px; }
+  .avatar-box img { width: 44px; height: 44px; }
+  .sel-arrow { width: 34px; }
+
+  /* ---- 生成按钮吸底（sticky，随内容区贴底） ---- */
   #generateBtn {
-    position: fixed;
-    bottom: 6px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(584px, calc(100vw - 16px));
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    border-radius: 12px;
+    margin: 0;
+    min-height: 46px;
     z-index: 6;
-    box-shadow: 0 6px 18px rgba(7, 193, 96, 0.35), 0 0 0 5px var(--bg);
   }
-  #generateBtn:active { transform: translateX(-50%) scale(.97); }
 
-  /* ---- 预览页紧凑 ---- */
-  .preview-head { margin-bottom: 6px; gap: 6px; }
-  .canvas-wrap { padding: 8px 6px; }
+  /* ---- 预览页 ---- */
+  .preview-head { justify-content: space-between; }
+  .preview-head .btn { flex: none; padding: 0 22px; }
+  .save-hint { display: none; }
 
-  /* ---- 购买浮层压进 430 ---- */
-  .buy-pop-card { padding: 12px 14px 10px; width: 264px; }
-  .buy-pop-title { font-size: 14px; margin-bottom: 6px; }
-  .buy-pop-qr { margin-bottom: 6px; }
-  .buy-pop-qr img { width: 150px; height: 150px; }
-  .buy-pop-qr-tip { margin-top: 4px; font-size: 11px; }
-  .buy-pop-tabs { flex-direction: row; gap: 6px; margin-bottom: 6px; }
-  .buy-pop-tab { flex: 1; padding: 8px 2px; font-size: 12px; border-radius: 9px; text-align: center; }
-  .buy-pop-close { padding: 8px 0; font-size: 13px; }
-
-  /* ---- 弹窗压缩 ---- */
-  .modal-head { padding: 9px 14px; }
-  .crop-stage { width: 150px; height: 150px; margin-top: 8px; }
-  .crop-hint { margin-top: 4px; }
-  .crop-foot { padding: 8px 12px; }
+  /* ---- 弹窗/购买浮层按窗口居中即可 ---- */
 }
 
 /* ---- 全局美化：桌面鼠标 hover 反馈 ---- */

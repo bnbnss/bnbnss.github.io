@@ -168,6 +168,7 @@
       <div id="renderStage" hidden></div>
       <img id="previewImg" alt="预览" hidden>
     </div>
+    <div class="save-hint">长按图片保存到相册</div>
   </section>
 </div>
 
@@ -205,6 +206,26 @@
   </div>
 </div>
 
+<script>
+(function () {
+  var hadError = false;
+  window.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'SCRIPT' && t.src) {
+      hadError = true;
+      try {
+        if (sessionStorage.getItem('bill_sreload')) return;
+        sessionStorage.setItem('bill_sreload', '1');
+      } catch (err) { return; }
+      location.reload();
+    }
+  }, true);
+  window.addEventListener('load', function () {
+    if (hadError) return;
+    try { sessionStorage.removeItem('bill_sreload'); } catch (err) {}
+  });
+})();
+</script>
 <script src="js/avatars.js"></script>
 <script src="js/regions.js"></script>
 <script src="js/ZFBregions.js"></script>
