@@ -708,6 +708,55 @@
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   }
 
+  function dockMode() {
+    return !!(window.matchMedia && matchMedia('(min-width: 960px) and (min-height: 560px)').matches);
+  }
+
+  function applyTheme(t) {
+    if (t !== 'dark') t = 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('bill_theme', t); } catch (e) {}
+    const ic = $('ttIcon'), lb = $('ttLabel');
+    if (ic) ic.textContent = t === 'dark' ? '☾' : '☀';
+    if (lb) lb.textContent = t === 'dark' ? '深色模式' : '浅色模式';
+  }
+
+  function initTheme() {
+    let t = '';
+    try { t = localStorage.getItem('bill_theme') || ''; } catch (e) {}
+    if (t !== 'dark' && t !== 'light') t = 'light';
+    applyTheme(t);
+    const b = $('themeToggle');
+    if (b) b.onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  }
+
+  function initTitlebar() {
+    const gw = window.chrome && window.chrome.webview;
+    if (!gw) return;
+    document.documentElement.classList.add('shell');
+    const send = c => { try { gw.postMessage(c); } catch (e) {} };
+    const tb = $('titlebar');
+    if ($('tbMin')) $('tbMin').onclick = () => send('minimize');
+    if ($('tbMax')) $('tbMax').onclick = () => send('maximize');
+    if ($('tbClose')) $('tbClose').onclick = () => send('close');
+    if (tb) {
+      tb.addEventListener('mousedown', e => {
+        if (e.button !== 0 || (e.target.closest && e.target.closest('.tb-btn'))) return;
+        send('drag');
+      });
+      tb.addEventListener('dblclick', e => {
+        if (e.target.closest && e.target.closest('.tb-btn')) return;
+        send('maximize');
+      });
+    }
+    gw.addEventListener('message', e => {
+      const d = e.data;
+      if (d && typeof d === 'object' && 'max' in d && $('tbMax')) {
+        $('tbMax').textContent = d.max ? '❐' : '□';
+      }
+    });
+  }
+
   async function generate() {
     if (!$('amount').value.trim()) { alert('请填写金额'); return; }
     if (state.tab === 'parking' && !($('plateNumber').value || '').trim()) { alert('请输入车牌号'); return; }
@@ -727,9 +776,12 @@
     const t = window.TPL && TPL[key];
     if (!t) { alert('模板数据缺失'); return; }
 
-    $('formPanel').hidden = true;
-    $('previewPanel').hidden = false;
-    window.scrollTo(0, 0);
+    const dock = dockMode();
+    if (!dock) {
+      $('formPanel').hidden = true;
+      $('previewPanel').hidden = false;
+      window.scrollTo(0, 0);
+    }
 
     const stage = $('renderStage');
     const out = $('previewImg');
@@ -748,12 +800,15 @@
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
-        windowWidth: 375
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight
       });
       state.lastCanvas = canvas;
       out.src = canvas.toDataURL('image/png');
       cleanupTpl();
       out.hidden = false;
+      const pe = $('previewEmpty');
+      if (pe) pe.hidden = true;
     } catch (e) {
       cleanupTpl();
       const msg = String((e && e.message) || e);
@@ -762,8 +817,12 @@
       } else {
         alert('生成失败：' + msg);
       }
-      $('previewPanel').hidden = true;
-      $('formPanel').hidden = false;
+      const pe = $('previewEmpty');
+      if (pe) pe.hidden = false;
+      if (!dock) {
+        $('previewPanel').hidden = true;
+        $('formPanel').hidden = false;
+      }
     }
   }
 
@@ -1143,6 +1202,8 @@
 
   function init() {
     preloadAvatars();
+    initTheme();
+    initTitlebar();
     initLogin();
     loadCustomAvatars();
     initCdk();
@@ -1201,6 +1262,8 @@
     $('backBtn').onclick = () => {
       $('previewPanel').hidden = true;
       $('formPanel').hidden = false;
+      const pe = $('previewEmpty');
+      if (pe) pe.hidden = false;
     };
 
     initAvatarModal();

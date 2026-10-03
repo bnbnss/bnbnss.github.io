@@ -4,9 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>滴滴答滴答v1.0</title>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('bill_theme');
+    if (t !== 'dark' && t !== 'light') t = 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+  if (window.chrome && window.chrome.webview) document.documentElement.className += ' shell';
+})();
+</script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<div class="titlebar" id="titlebar">
+  <div class="tb-title">滴滴答滴答v1.0</div>
+  <button type="button" class="tb-btn" id="tbMin" title="最小化">─</button>
+  <button type="button" class="tb-btn" id="tbMax" title="最大化">□</button>
+  <button type="button" class="tb-btn tb-close" id="tbClose" title="关闭">✕</button>
+</div>
 <div class="login-screen" id="loginScreen">
   <div class="petals">
     <span class="petal"></span><span class="petal"></span><span class="petal"></span>
@@ -63,6 +79,9 @@
       <button class="tab" data-tab="etc">ETC充电</button>
       <button class="tab" data-tab="parking">停车票</button>
     </nav>
+    <div class="side-foot">
+      <button type="button" class="theme-toggle" id="themeToggle"><span class="tt-ico" id="ttIcon">☀</span><span id="ttLabel">浅色模式</span></button>
+    </div>
   </header>
 
   <section class="panel form-panel" id="formPanel">
@@ -167,6 +186,7 @@
     <div class="canvas-wrap">
       <div id="renderStage" hidden></div>
       <img id="previewImg" alt="预览" hidden>
+      <div class="preview-empty" id="previewEmpty">填写左侧表单后点击「生成预览」<br>票据效果会显示在这里</div>
     </div>
     <div class="save-hint">长按图片保存到相册</div>
   </section>
