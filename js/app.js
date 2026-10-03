@@ -730,6 +730,17 @@
     if (b) b.onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   }
 
+  function shellMsg(c) {
+    const gw = window.chrome && window.chrome.webview;
+    if (gw) { try { gw.postMessage(c); } catch (e) {} }
+  }
+
+  function setShellStage(big) {
+    shellMsg(big ? 'enlarge' : 'shrink');
+    const tb = $('tbMax');
+    if (tb) tb.hidden = !big;
+  }
+
   function initTitlebar() {
     const gw = window.chrome && window.chrome.webview;
     if (!gw) return;
@@ -1086,15 +1097,17 @@
     if (msg) { msg.textContent = m || ''; msg.hidden = !m; }
     const k = $('cardKey');
     if (k) k.value = '';
+    setShellStage(false);
     window.scrollTo(0, 0);
   }
 
   function initLogin() {
     const screen = $('loginScreen');
     if (!screen) return;
+    setShellStage(false);
     const msg = $('loginMsg');
     const btn = $('loginBtn');
-    const enter = () => { screen.hidden = true; };
+    const enter = () => { screen.hidden = true; setShellStage(true); };
 
     const sess = getSession();
     if (sess) {
